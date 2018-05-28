@@ -106,37 +106,37 @@
                 $('#lista-usuarios-conectados').append('<li usuario='+item+'>' + item + '</li>');
         });
         n_usuarios=$('#lista-usuarios-conectados').children('li').size()+1;
-        // PC[(n_usuarios-2)]=new Array(new RTCPeerConnection(pcConfig),"");
-        // PC[(n_usuarios-2)][0].onicecandidate = enviar_candidato;
-        // PC[(n_usuarios-2)][0].onnegotiationneeded = function() {
-        //     console.log('Negociación --> '+(n_usuarios-2));
-        //     if (!iniciador) {
-        //         console.log('Mandando oferta --> '+(n_usuarios-2));
-        //         PC[(n_usuarios-2)][0].createOffer().then(function(offer) {
-        //                 return PC[(n_usuarios-2)][0].setLocalDescription(offer);
-        //             })
-        //             .then(function() {
-        //                 // send the offer to the other peer
-        //                 enviar_descripcion((n_usuarios-2));
-        //             })
-        //             .catch(mostrar_error);
-        //     }
-        // };
-        // PC[(n_usuarios-2)][0].ontrack = function(evt) {
-        //     // don't set srcObject again if it is already set.
-        //     //if (!remoteView.srcObject)
-        //     var video_remoto = document.getElementById('video-remoto-'+(n_usuarios-1));
-        //     video_remoto.srcObject = evt.streams[0];
-        // };
-        // navigator.mediaDevices.getUserMedia({ video: true })
-        //     .then(function(stream) {
-        //         //var video_local = document.getElementById('video-local');
-        //         //video_local.srcObject = stream;
-        //         PC[(n_usuarios-2)][0].addTrack(stream.getTracks()[0], stream);
-        //         //pc.addTrack(stream.getAudioTracks()[0], stream);
-        //         // PC[0].addTrack(stream.getVideoTracks()[0], stream);
-        //     })
-        //     .catch(mostrar_error);
+        PC[(n_usuarios-2)]=new Array(new RTCPeerConnection(pcConfig),"");
+        PC[(n_usuarios-2)][0].onicecandidate = enviar_candidato;
+        PC[(n_usuarios-2)][0].onnegotiationneeded = function() {
+            console.log('Negociación --> '+(n_usuarios-2));
+            if (!iniciador) {
+                console.log('Mandando oferta --> '+(n_usuarios-2));
+                PC[(n_usuarios-2)][0].createOffer().then(function(offer) {
+                        return PC[(n_usuarios-2)][0].setLocalDescription(offer);
+                    })
+                    .then(function() {
+                        // send the offer to the other peer
+                        enviar_descripcion((n_usuarios-2));
+                    })
+                    .catch(mostrar_error);
+            }
+        };
+        PC[(n_usuarios-2)][0].ontrack = function(evt) {
+            // don't set srcObject again if it is already set.
+            //if (!remoteView.srcObject)
+            var video_remoto = document.getElementById('video-remoto-'+(n_usuarios));
+            video_remoto.srcObject = evt.streams[0];
+        };
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(function(stream) {
+                //var video_local = document.getElementById('video-local');
+                //video_local.srcObject = stream;
+                PC[(n_usuarios-2)][0].addTrack(stream.getTracks()[0], stream);
+                //pc.addTrack(stream.getAudioTracks()[0], stream);
+                // PC[0].addTrack(stream.getVideoTracks()[0], stream);
+            })
+            .catch(mostrar_error);
         //iniciador=false;
     });
 
@@ -150,7 +150,7 @@
     function iniciar_WebRTC() {
         alert(n_usuarios);
         // send any ice candidates to the other peer
-        for (let index = 0; index < ((iniciador) ? 1 : parseInt(n_usuarios-1)); index++) {
+        for (let index = 0; index < ((iniciador) ? 1 : (n_usuarios-1)); index++) {
             PC[index]=new Array(new RTCPeerConnection(pcConfig),"");
             PC[index][0].onicecandidate = enviar_candidato;
             console.log("for 1 ... index="+index+"... < "+(n_usuarios-1));
@@ -198,8 +198,9 @@
                 video_local.srcObject = stream;
                 for (let index = 0; index < (iniciador) ? 1 : (n_usuarios-1); index++) {
                     PC[index][0].addTrack(stream.getTracks()[0], stream);
+                    console.log("for 4 --> index="+index);
                 }
-                console.log("for 4");
+                
                 //pc.addTrack(stream.getAudioTracks()[0], stream);
                 // PC[0].addTrack(stream.getVideoTracks()[0], stream);
             })
@@ -234,42 +235,46 @@
         console.log('Recibiendo descripción --> '+datos.nombre_usuario);
         var i=0;//para saber a que pc.. del array se le va a poner descripcion
         if (datos.descripcion.type == 'offer') {
-            for (let index = 0; index < (n_usuarios-1); index++) {
-                if(PC[index][1] === ''){
-                    i=index;
-                    PC[i][1]=datos.nombre_usuario;
+            for (let index = 0; index < ((iniciador) ? 1 : (n_usuarios-1)); index++) {
+                if(PC[index][1] == ''){
+                    PC[index][1]=datos.nombre_usuario;
+
+                    PC[index][0].setRemoteDescription(datos.descripcion).then(function() {
+                        return PC[index][0].createAnswer();
+                    })
+                    .then(function(answer) {
+                        return PC[index][0].setLocalDescription(answer);
+                    })
+                    .then(function() {
+                        console.log('Mandando respuesta --> '+index);
+                        enviar_descripcion(index);
+                    })
+                    .catch(mostrar_error);
+
                     break;
                 }
             }
-            PC[i][0].setRemoteDescription(datos.descripcion).then(function() {
-                    return PC[i][0].createAnswer();
-                })
-                .then(function(answer) {
-                    return PC[i][0].setLocalDescription(answer);
-                })
-                .then(function() {
-                    console.log('Mandando respuesta --> '+i);
-                    enviar_descripcion(i);
-                })
-                .catch(mostrar_error);
         } else {
-            for (let index = 0; index < (n_usuarios-1); index++) {
-                if(PC[index][1] === datos.nombre_usuario || PC[index][1] === ''){
-                    i=index;
-                    PC[i][1]=datos.nombre_usuario;
+            for (let index = 0; index < ((iniciador) ? 1 : (n_usuarios-1)); index++) {
+                if(PC[index][1] == ''){
+                    PC[index][1]=datos.nombre_usuario;
+
+                    console.log('Recibiendo respuesta --> '+index);
+                    PC[index][0].setRemoteDescription(datos.descripcion).catch(mostrar_error);
+
                     break;
                 }
             }
-            console.log('Recibiendo respuesta --> '+i);
-            PC[i][0].setRemoteDescription(datos.descripcion).catch(mostrar_error);
         }
     });
 
     socket.on('candidato', function(datos) {
         console.log('Recibiendo candidato --> '+datos.nombre_usuario+' : ' + JSON.stringify(datos.candidato));
-        for (let index = 0; index < (n_usuarios-1); index++) {
-            if(PC[index][1] === datos.nombre_usuario)
-                    PC[index][0].addIceCandidate(datos.candidato);
+        for (let index = 0; index < ((iniciador) ? 1 : (n_usuarios-1)); index++) {
+            if(PC[index][1] == datos.nombre_usuario){
+                PC[index][0].addIceCandidate(datos.candidato);
+                break;
+            }
         }
         // PC[0].addIceCandidate(datos.candidato);
     });

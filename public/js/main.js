@@ -171,7 +171,7 @@
                         })
                         .then(function() {
                             // send the offer to the other peer
-                            console.log("for 2 --> index="+index);
+                            console.log("for 2  --> index="+index);
                             enviar_descripcion(index);
                             
                         })
